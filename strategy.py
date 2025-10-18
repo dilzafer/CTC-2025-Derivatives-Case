@@ -410,7 +410,7 @@ class MyTradingStrategy(AbstractTradingStrategy):
     ) -> Dict[str, Tuple[float, float]]:
 
         # Extract round info
-        self.current_subround = int(round_info.current_sub_round)
+        self.current_subround = int(round_info.get("current_sub_round", 1))
 
         # Build PMF from data (with caching for performance)
         D = int(self.dice_sides)
@@ -451,7 +451,17 @@ class MyTradingStrategy(AbstractTradingStrategy):
 
         # Process each product
         for product in products:
-            pid = getattr(product, "id", "")
+            # Handle both object attribute and dict access patterns
+            if hasattr(product, "product_id"):
+                pid = product.product_id
+            elif hasattr(product, "id"):
+                pid = product.id
+            else:
+                pid = getattr(product, "product_id", getattr(product, "id", ""))
+
+            if not pid:
+                continue
+
             parts = pid.split(",")
             if len(parts) < 3:
                 continue
@@ -598,7 +608,17 @@ class MyTradingStrategy(AbstractTradingStrategy):
         total_delta = 0.0
 
         for product in products:
-            pid = getattr(product, "id", "")
+            # Handle both object attribute and dict access patterns
+            if hasattr(product, "product_id"):
+                pid = product.product_id
+            elif hasattr(product, "id"):
+                pid = product.id
+            else:
+                pid = getattr(product, "product_id", getattr(product, "id", ""))
+
+            if not pid:
+                continue
+
             parts = pid.split(",")
             if len(parts) < 3:
                 continue
