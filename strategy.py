@@ -398,7 +398,20 @@ class MyTradingStrategy(AbstractTradingStrategy):
     def on_round_end(self, result: Dict[str, Any]) -> None:
         pnl = result.get("pnl", 0.0)
         print(f"[ROUND END] PnL: {pnl:.2f}")
-        print(f"[ROUND END] Full result: {result}")
+
+        # Debug: Show settlements
+        settlements = result.get("settlements", {})
+        print(f"[ROUND END] Settlements: {settlements}")
+
+        # Debug: Show our trades
+        trades = result.get("your_trades", [])
+        print(f"[ROUND END] Number of trades: {len(trades)}")
+
+        # Debug: Show our positions
+        if hasattr(result, 'positions'):
+            print(f"[ROUND END] Positions: {result.get('positions', {})}")
+
+        print(f"[ROUND END] Full result keys: {result.keys()}")
 
     def on_game_end(self, summary: Dict[str, Any]) -> None:
         total_pnl = summary.get("total_pnl", 0.0)
