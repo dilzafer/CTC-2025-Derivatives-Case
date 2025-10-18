@@ -313,15 +313,21 @@ class MyTradingStrategy(AbstractTradingStrategy):
                     if kind == "DF":
                         # DynamicFutures
                         expiry = int(parts[2])
+
+                        # CRITICAL FIX: Don't quote expired contracts!
+                        # Expired contracts have already settled and are worth zero
+                        if expiry < self.current_subround:
+                            print(f"[DEBUG] {pid}: EXPIRED (expiry={expiry} < current={self.current_subround}) - SKIPPING")
+                            continue
+
+                        # Only quote active or currently-expiring contracts
                         fair = get_dynamic_future_fair_value(
                             expiry, self.current_subround, rolls_array,
                             self.rolls_per_subround, mu1
                         )
 
                         # Determine spread
-                        if expiry < self.current_subround:
-                            spread = self.spread_df_expired
-                        elif expiry == self.current_subround:
+                        if expiry == self.current_subround:
                             spread = self.spread_df_current
                         else:
                             spread = self.spread_df_future
@@ -329,7 +335,7 @@ class MyTradingStrategy(AbstractTradingStrategy):
                         bid = fair * (1 - spread)
                         ask = fair * (1 + spread)
 
-                        print(f"[DEBUG] {pid}: fair={fair:.2f}, spread={spread*100:.1f}%, bid={bid:.2f}, ask={ask:.2f}")
+                        print(f"[DEBUG] {pid}: expiry={expiry}, fair={fair:.2f}, spread={spread*100:.1f}%, bid={bid:.2f}, ask={ask:.2f}")
 
                     elif kind == "F":
                         # Standard Futures
@@ -361,12 +367,20 @@ class MyTradingStrategy(AbstractTradingStrategy):
                     else:
                         continue
 
+                    # Sanity checks
+                    if fair < 0 or not np.isfinite(fair):
+                        print(f"[WARN] {pid}: Invalid fair value {fair} - SKIPPING")
+                        continue
+
                     # Ensure valid market
                     bid = max(0.0, bid)
                     ask = max(bid + 0.01, ask)
 
-                    if bid < ask and ask < 1e15:  # Sanity check
+                    # Final validation
+                    if bid < ask and ask < 1e15 and np.isfinite(bid) and np.isfinite(ask):
                         quotes[pid] = (float(bid), float(ask))
+                    else:
+                        print(f"[WARN] {pid}: Invalid quotes bid={bid}, ask={ask} - SKIPPING")
 
                 except Exception as e:
                     print(f"[ERROR] Failed to price {pid}: {e}")
